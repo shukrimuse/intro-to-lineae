@@ -50,3 +50,50 @@ GGally::ggcoef_model(lsmodel1,
                      show_p_values=FALSE, 
                      conf.level=0.95)
 
+#summarizes information about model components
+broom::tidy(lsmodel1, conf.int=T, conf.level=0.99)
+
+#getting the other treatment mean and standard error
+darwin %>% 
+  mutate(type=factor(type)) %>% 
+  mutate(type=fct_relevel(type, c("Self", "Cross"))) %>% 
+  lm(height~type, data=.) %>% 
+  broom::tidy()
+
+#emmeans function produces similar result aswell
+means <- emmeans::emmeans(lsmodel1, specs = ~ type)
+means
+
+#gives a handy summary to include in data visuals that combine raw data and statistical inferences
+means %>% 
+  as_tibble() %>% 
+  ggplot(aes(x=type, 
+             y=emmean))+
+  geom_pointrange(aes(
+    ymin=lower.CL, 
+    ymax=upper.CL))
+
+#checking that the residual/unexplained variance in our data is approximately normally distributed
+#creating QQ plot, QQ plot is a classic way of checking whether a sample distribution is the same as another
+performance::check_model(lsmodel1, check=c("normality","qq"))
+plot(lsmodel1, which=c(2,2))
+
+#checking that the residual/unexplained variance is approximately equal between our groups
+performance::check_model(lsmodel1, check="homogeneity")
+plot(lsmodel1, which=c(1,3))
+
+#check how much of an effect outliers might be having on the model estimates (means)
+performance::check_model(lsmodel1, check="outliers")
+plot(lsmodel1, which=c(4,4))
+
+#summary
+darwin %>% 
+  ggplot(aes(x=type, 
+             y=height))+
+  geom_jitter(width=0.1, 
+              pch=21, 
+              aes(fill=type))+
+  theme_classic()+
+  geom_segment(aes(x=1, xend=2, y=20.192, yend=20.192-2.617), linetype="dashed")+
+  stat_summary(fun.y=mean, geom="crossbar", width=0.2)
+
